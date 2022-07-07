@@ -21,7 +21,7 @@ ui <- fluidPage(
      
       fileInput("upload", NULL, accept=c(".csv", ".tsv", ".txt"), buttonLabel = "Upload .tsv ..."), 
 # hard coded to 2 lines
-#      numericInput("n", "data rows", value = 1, min = 1, step = 1),
+      numericInput("z.rem", "max 0 proportion", value = 0.95, min = 0, max=1, step = 0.05),
       tableOutput("files") ,
       numericInput("group_1_size", "group 1 size", value=7, min=3, step=1),
       numericInput("group_2_size", "group 2 size", value=7, min=3, step=1),
@@ -51,7 +51,7 @@ ui <- fluidPage(
                   c("prior" = "prior",
                     "Geometric Baysian" = "GBM",
                     "Count zero mult" = "CZM",
-                   "none" = NULL)),
+                   "none" = "none")),
 
       # Input: Checkbox for whether outliers should be included ----
       checkboxInput("log", "Take log of transform (prop, TMM, RLE)", F)
@@ -97,11 +97,14 @@ server <- function(input, output) {
   })
   
 #  # set groups 
-    group <- c(rep('A', input$group_1_size), rep("B", input$group_2_size)) 
-
+    group <- c(rep('A', input$group_1_size), rep("B", input$group_2_size))
+    zero.method = input$zero
+    
+    if(input$zero=="none") {zero.method = NULL }
+     
 # perturbation 
     if(input$test=='pert'){
-      x <- aIc.perturb(up.data(), norm.method=input$norm, zero.method=input$zero, log=input$log, group=group)
+      x <- aIc.perturb(up.data(), norm.method=input$norm, zero.method=zero.method, zero.remove=input$z.rem,  log=input$log, group=group)
       plot(x$plot, main=x$main, xlab=x$xlab, ylab=x$ylab)
       abline(v=0, lty=2, lwd=3, col='red')
       if(x$is.perturb == 'Yes'){
@@ -112,7 +115,7 @@ server <- function(input, output) {
 
 # dominance
     } else if (input$test=='dom'){
-      x <- aIc.dominant(up.data(), norm.method=input$norm,zero.method=input$zero, log=input$log, group=group)
+      x <- aIc.dominant(up.data(), norm.method=input$norm,zero.method=zero.method, zero.remove=input$z.rem,  log=input$log, group=group)
       plot(x$plot, main=x$main, xlab=x$xlab, ylab=x$ylab)
       abline(v=0, lty=2, lwd=3, col='red')
       if(x$is.dominant == 'Yes'){
@@ -123,7 +126,7 @@ server <- function(input, output) {
 
 # scale
     } else if (input$test=='scale'){
-      x <- aIc.scale(up.data(), norm.method=input$norm, zero.method=input$zero, log=input$log, group=group)
+      x <- aIc.scale(up.data(), norm.method=input$norm, zero.method=zero.method, zero.remove=input$z.rem,  log=input$log, group=group)
       plot(x$plot, main=x$main, xlab=x$xlab, ylab=x$ylab)
       abline(v=0, lty=2, lwd=3, col='red')
       if(x$is.scale == 'Yes'){
@@ -134,7 +137,7 @@ server <- function(input, output) {
 
 # coherence      
     } else if (input$test=='cohere'){
-      x <- aIc.coherent(up.data(), norm.method=input$norm, zero.method=input$zero, log=input$log, group=group)
+      x <- aIc.coherent(up.data(), norm.method=input$norm, zero.method=zero.method, zero.remove=input$z.rem,  log=input$log, group=group)
       plot(x$plot[,1], x$plot[,2], main=x$main, xlab=x$xlab, ylab=x$ylab)
       abline(0,1, lty=2, lwd=3, col='red')
       if(x$is.coherent == 'Yes' & input$norm != 'none'){
@@ -147,7 +150,7 @@ server <- function(input, output) {
 
     # singularity      
     } else if (input$test=='sing'){
-      x <- aIc.singular(up.data(), norm.method=input$norm, zero.method=input$zero, log=input$log, group=group)
+      x <- aIc.singular(up.data(), norm.method=input$norm, zero.method=zero.method, zero.remove=input$z.rem,  log=input$log, group=group)
       if(x$is.singular == 'Yes'){
        output$caption <- renderText({paste('The data are singular with transform ', input$norm,'. When doing dimension reduction you need to be aware of compositional effects; see Greenacre and Aitchison 2002 "Biplots of compositional data" JRSA 51:375. You likey will be best served using a compositional analysis approach.', sep="")})
       } else if (x$is.singular == 'No'){
