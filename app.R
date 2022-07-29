@@ -32,7 +32,8 @@ ui <- fluidPage(
                   c("distance dominance" = "dom",
                     "perturbation invariance" = "pert",
                     "scale invariance" = "scale",
-                    "correlation coherence" = "cohere",
+                    "correlation coherence:spearman" = "cohere.sp",
+                    "correlation coherence:pearson" = "cohere.pe",
                     "data singularity" = "sing")),
 
       # Input: Selector for normalization ----
@@ -76,6 +77,7 @@ ui <- fluidPage(
 # Define server logic to plot various variables and load data ----
 server <- function(input, output) {
 
+  options(shiny.maxRequestSize=10*1024^2)
   
    # Generate a plot of the requested variable against mpg ----
   # and only exclude outliers if requested
@@ -105,19 +107,17 @@ server <- function(input, output) {
 # perturbation 
     if(input$test=='pert'){
       x <- aIc.perturb(up.data(), norm.method=input$norm, zero.method=zero.method, zero.remove=input$z.rem,  log=input$log, group=group)
-      plot(x$plot, main=x$main, xlab=x$xlab, ylab=x$ylab)
-      abline(v=0, lty=2, lwd=3, col='red')
+      aIc.plot(x)
       if(x$is.perturb == 'Yes'){
-        output$caption <- renderText({paste('The data are approximately perturbation invariant with transform ', input$norm,". The maximum observed absolute perturbation is: ", x$ol, "%.", sep="")})
+        output$caption <- renderText({paste('The data are approximately perturbation invariant with transform ', input$norm,". The maximum observed relative perturbation is: ", x$ol, sep="")})
       } else if(x$is.perturb == 'No') {
-        output$caption <- renderText({paste('The data are not perturbation invariant with transform ', input$norm,'. The maximum observed absolute perturbation is: ', x$ol, '%. Please try the clr transform on this dataset.', sep="")})
+        output$caption <- renderText({paste('The data are not perturbation invariant with transform ', input$norm,'. The maximum observed relative perturbation is: ', x$ol, '%. Please try the clr transform on this dataset.', sep="")})
       }
 
 # dominance
     } else if (input$test=='dom'){
       x <- aIc.dominant(up.data(), norm.method=input$norm,zero.method=zero.method, zero.remove=input$z.rem,  log=input$log, group=group)
-      plot(x$plot, main=x$main, xlab=x$xlab, ylab=x$ylab)
-      abline(v=0, lty=2, lwd=3, col='red')
+      aIc.plot(x)
       if(x$is.dominant == 'Yes'){
         output$caption <- renderText({paste('The data are distance dominant with transform ', input$norm,". The proportion of non-dominant distances in the sub-compositon is: ", round(x$ol,2), "%.", sep="")})
       } else if(x$is.dominant == 'No') {
@@ -127,8 +127,7 @@ server <- function(input, output) {
 # scale
     } else if (input$test=='scale'){
       x <- aIc.scale(up.data(), norm.method=input$norm, zero.method=zero.method, zero.remove=input$z.rem,  log=input$log, group=group)
-      plot(x$plot, main=x$main, xlab=x$xlab, ylab=x$ylab)
-      abline(v=0, lty=2, lwd=3, col='red')
+      aIc.plot(x)
       if(x$is.scale == 'Yes'){
         output$caption <- renderText({paste('The data are scale invariant with transform ', input$norm,". The proportion of non-scale invariand distances in the sub-compositon is: ", round(x$ol,2), "%.", sep="")})
       } else if(x$is.scale == 'No') {
@@ -136,14 +135,14 @@ server <- function(input, output) {
       }
 
 # coherence      
-    } else if (input$test=='cohere'){
-      x <- aIc.coherent(up.data(), norm.method=input$norm, zero.method=zero.method, zero.remove=input$z.rem,  log=input$log, group=group)
-      plot(x$plot[,1], x$plot[,2], main=x$main, xlab=x$xlab, ylab=x$ylab)
-      abline(0,1, lty=2, lwd=3, col='red')
+    } else if (input$test=='cohere.sp' || input$test=='cohere.pe'){
+      if(input$test=='cohere.sp') x <- aIc.coherent(up.data(), norm.method=input$norm, zero.method=zero.method, zero.remove=input$z.rem,  log=input$log, group=group, cor.test='spearman')
+      if(input$test=='cohere.pe') x <- aIc.coherent(up.data(), norm.method=input$norm, zero.method=zero.method, zero.remove=input$z.rem,  log=input$log, group=group, cor.test='pearson')
+      aIc.plot(x)
       if(x$is.coherent == 'Yes' & input$norm != 'none'){
         output$caption <- renderText({paste('The data are sub-compositionally coherent with ', input$norm,". Network analysis and correlation inference may be OK.", sep="")})
       } else if(x$is.coherent == 'No' & input$norm != 'none') {
-        output$caption <- renderText({paste('The data are not sub-compositionally coherent with transform ', input$norm,'. You should use some form of compositional association test and should check out the propr R package. In addition, when doing dimension reduction you need to be aware of compositional effects; see Greenacre and Aitchison 2002 "Biplots of compositional data" JRSA 51:375', sep="")})
+        output$caption <- renderText({paste('The data are not sub-compositionally coherent with transform ', input$norm,'. When doing dimension reduction you need to be aware of compositional effects; see Greenacre and Aitchison 2002 "Biplots of compositional data" JRSA 51:375', sep="")})
       } else if(x$is.coherent == 'Yes' & input$norm == 'none') {
         output$caption <- renderText({paste('The data must be transformed in some way prior to use. You should use some form of compositional association test and should check out the propr R package. In addition, when doing dimension reduction you need to be aware of compositional effects; see Greenacre and Aitchison 2002 "Biplots of compositional data" JRSA 51:375', sep="")})
       }
