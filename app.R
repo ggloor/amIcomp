@@ -51,7 +51,7 @@ ui <- fluidPage(
       selectInput("zero", "Zero replacement:",
                   c("prior" = "prior",
                     "Geometric Baysian" = "GBM",
-                    "Count zero mult" = "CZM",
+                    "lrSVD" = "lrSVD",
                    "none" = "none")),
 
       # Input: Checkbox for whether outliers should be included ----
